@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: data_base 
+    restart: always
+    environment:
+      POSTGRES_DB: MLTD_DB
+      POSTGRES_USER: Joyce
+      POSTGRES_PASSWORD: MLTD
+    ports:
+      - "6432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  mail_server:
+      image: rnwood/smtp4dev:v3
+      container_name: mail_server
+      restart: unless-stopped
+      ports:
+        - "4000:80"
+        - "2525:25"
+      volumes:
+        - smtp4dev-data:/smtp4dev
+      environment:
+        - ServerOptions__Urls=http://*:80
+        - ServerOptions__HostName=smtp4dev
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_service
+    restart: always
+    ports:
+      - "9080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/MLTD_DB
+      SPRING_DATASOURCE_USERNAME: Joyce
+      SPRING_DATASOURCE_PASSWORD: MLTD
+      
+    volumes:
+      - ./backend:/app
+      - maven_cache:/root/.m2
+    depends_on:
+      - db
+      - mail_server
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend_service
+    restart: always
+    ports:
+      - "3030:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  maven_cache:
+  smtp4dev-data:
+
+
+
+ 
